@@ -12,7 +12,3 @@ llama is a programming language centered around playing with math without the hu
 2) stmts : stmt eol stmts
 3) stmts : stmt
 4) stmt : ...
-
-# Unrelated
-
-42nd Repo Yay :)
