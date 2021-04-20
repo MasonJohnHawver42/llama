@@ -8,7 +8,12 @@ llama is a programming language centered around playing with math without the hu
 
 # Grammar
 
-1) program : stmts eof
-2) stmts : stmt eol stmts
-3) stmts : stmt
-4) stmt : ...
+
+Program -> {Statment;}+
+Statment -> id = Expression | id(id {, id}*) = E | E
+Expression -> Term { [+-] Term }*
+Term -> Factor { [*/] Factor }
+Factor -> num | id | (Expression)
+Factor -> id(Expression {, Expression}*)
+Factor -> (Expression, Expression)
+Factor -> [Expression {, Expression}*]
