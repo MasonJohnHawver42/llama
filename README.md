@@ -8,12 +8,17 @@ llama is a programming language centered around playing with math without the hu
 
 # Grammar
 
+1) Program -> {Statment/r/n}+
+2) Statment -> Expression {= | => | >= | <= | =<]} Expression
+3) Statment -> id(id {, id}*) = Expression
+4) Statment -> Expression
+5) Expression -> Term { [+-] Term }*
+6) Term -> Factor { [*/] Factor }*
+7) Factor -> Power { [^] Power }*
+8) Power -> num | id | (Expression)
+9) Power -> id(Expression {, Expression}*)
+10) Power -> '{' Expression {= | != | => | >= | <= | =<]} Expression '?' { Expression : Expression '}' | Expression '}' | '}' }
+11) Power -> (Expression, Expression)
 
-Program -> {Statment;}+
-Statment -> id = Expression | id(id {, id}*) = E | E
-Expression -> Term { [+-] Term }*
-Term -> Factor { [*/] Factor }
-Factor -> num | id | (Expression)
-Factor -> id(Expression {, Expression}*)
-Factor -> (Expression, Expression)
-Factor -> [Expression {, Expression}*]
+Latter(this just complicates it because I only want specifc expressiojn to be used for a list):
+11) Power -> [Expression {, Expression}*]
