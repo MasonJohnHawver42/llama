@@ -59,7 +59,7 @@ class Mult:
         if len(other) == 0:
             return num
 
-        exprs = ([num] if num.val != 0 else []) + other
+        exprs = ([num] if num.val != 1 else []) + other
 
         for i, expr in enumerate(exprs):
 
@@ -72,6 +72,7 @@ class Mult:
 
                 div = Div(numertor, denum)
                 return div.simplify()
+            
 
         return Mult(exprs)
 
@@ -99,7 +100,17 @@ class Div:
             denum2 = Mult([num.denum, denum])
             denum2 = denum2.simplify()
 
-            return Div(numerator2, denum2)
+            div = Div(numerator2, denum2)
+            return div.simplify()
+        
+        if type(denum) is Div:
+            numerator2 = Mult([num, denum.denum])
+            numerator2 = numerator2.simplify()
+            denum2 = denum.num
+
+            div = Div(numerator2, denum2)
+            return div.simplify()
+        
 
         return Div(num, denum)
 
@@ -117,8 +128,6 @@ class Power:
     def simplify(self):
         base = self.base.simplify()
         power = self.power.simplify()
-
-        print(power)
 
         if type(base) is Num and type(power) is Num:
             return Num(pow(base.val, power.val))
