@@ -10,7 +10,7 @@ from AST import *
 
 lg = Lexer()
 lg.add("EQUALS", "=")
-lg.add("OP", "[+*/-^]")
+lg.add("OP", "[-+*/^]")
 lg.add("NUM", "[-]?[0-9]*[.]?[0-9]+")
 lg.add("BRACKET", "[()\[\]]")
 lg.add("IDENT", "[a-zA-Z_][a-zA-Z_0-9]*")
@@ -23,7 +23,8 @@ lg.add("COMMA", ",")
 # a = pi/4
 
 code = """
-a = ((z/(a/b)) / pi);
+a = a * (b / c) * (d / e) * f - 1;
+z=1;
 """
 
 tokens = lg.lex(code) + [Token("EOF", "")]
