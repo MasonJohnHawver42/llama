@@ -1,18 +1,20 @@
 from Lexer import *
+from AST import *
 
-# P -> {S EOL}+
-# S -> id = E | IDENT(id {, id}*) = E | E
+# Pr -> {S EOL}+
+# S -> id = E | IDENT(id {, id}*) = E
 # E -> T { [+-] T }*
-# T -> F { [*/] F }
-# F -> num | IDENT | (E) | ?[num]IDENT(E {, E}*) | (E, E) | [E {, E}*]
+# T -> F { [*/] F }*
+# P -> P { [^] P }*
+# P -> num | [-]IDENT | (E) | IDENT(E {, E}*)
 
 lg = Lexer()
 lg.add("EQUALS", "=")
-lg.add("OP", "[+*/-]")
+lg.add("OP", "[+*/-^]")
 lg.add("NUM", "[-]?[0-9]*[.]?[0-9]+")
 lg.add("BRACKET", "[()\[\]]")
 lg.add("IDENT", "[a-zA-Z_][a-zA-Z_0-9]*")
-lg.add("EOL", "\n")
+lg.add("EOL", ";")
 lg.add("COMMA", ",")
 
 
@@ -21,158 +23,11 @@ lg.add("COMMA", ",")
 # a = pi/4
 
 code = """
-f(x) = (x + 5, (x - 1) * 6 + 1)
-point = f(sin(-10))
-a = pi/4
-point * [[cos(a), -sin(a)],
-        [sin(a),  cos(a)]]
+a = ((z/(a/b)) / pi);
 """
 
-tokens = lg.lex(code) + [Token("EOL", ""), Token("EOF", "")]
+tokens = lg.lex(code) + [Token("EOF", "")]
 print(" ".join([t.name for t in tokens]) )
-
-for i, t in enumerate(tokens):
-    if t.name == "EOL":
-        if tokens[i+1].name not in ["IDENT", "EOF"]:
-            tokens.remove(t)
-
-print(" ".join([t.name for t in tokens]) )
-
-class Add:
-    def __init__(self, le, re):
-        self.right = re
-        self.left = le
-
-    def eval(self):
-        return self.left.eval() + self.right.eval()
-
-    def tree(self):
-        return {"add" : [self.left.tree(), self.right.tree()]}
-
-    def __str__(self):
-        return "({} + {})".format(str(self.left), str(self.right))
-
-class Sub:
-    def __init__(self, le, re):
-        self.right = re
-        self.left = le
-
-    def eval(self):
-        return self.left.eval() - self.right.eval()
-
-    def tree(self):
-        return {"sub" : [self.left.tree(), self.right.tree()]}
-
-    def __str__(self):
-        return "({} - {})".format(str(self.left), str(self.right))
-
-class Div:
-    def __init__(self, le, re):
-        self.right = re
-        self.left = le
-
-    def eval(self):
-        return self.left.eval() / self.right.eval()
-
-    def tree(self):
-        return {"div" : [self.left.tree(), self.right.tree()]}
-
-    def __str__(self):
-        return "({} / {})".format(str(self.left), str(self.right))
-
-class Mult:
-    def __init__(self, le, re):
-        self.right = re
-        self.left = le
-
-    def eval(self):
-        return self.left.eval() * self.right.eval()
-
-    def tree(self):
-        return {"mult" : [self.left.tree(), self.right.tree()] }
-
-    def __str__(self):
-        return "({} * {})".format(str(self.left), str(self.right))
-
-class Num:
-    def __init__(self, val):
-        self.val = val
-
-    def eval(self):
-        return self.val
-
-    def tree(self):
-        return {"num" : self.val}
-
-    def __str__(self):
-        return str(self.val)
-
-class Var:
-    def __init__(self, name):
-        self.name = name
-
-    def tree(self):
-        return {"var" : self.name}
-
-    def __str__(self):
-        return self.name
-
-class Assighnment:
-    def __init__(self, var, expr):
-        self.var = var
-        self.expr = expr
-
-    def tree(self):
-        return {"assighn" : {"var" : self.var.name, "value" : self.expr.tree()}}
-
-    def __str__(self):
-        return "{} = {}".format(str(self.var), str(self.expr))
-
-class Call:
-    def __init__(self, name, args):
-        self.name = name
-        self.args = args
-
-    def tree(self):
-        return {self.name : [arg.tree() for i, arg in enumerate(self.args)]}
-
-    def __str__(self):
-        return "{}({})".format(self.name, ", ".join([str(arg) for arg in self.args]))
-
-class Pair:
-    def __init__(self, le, re):
-        self.left = le
-        self.right = re
-
-    def tree(self):
-        return {"pair" : [self.left.tree(), self.right.tree()]}
-
-    def __str__(self):
-        return "({}, {})".format(str(self.left), str(self.right))
-
-class Array:
-    def __init__(self, vals):
-        self.vals = vals
-
-    def tree(self):
-        return {"array" : [val.tree() for val in self.vals]}
-
-    def __str__(self):
-        return "[{}]".format(", ".join([val.__str__() for val in self.vals]))
-
-class Func:
-    def __init__(self, name, args, expr):
-        self.name = name
-        self.args = args
-        self.expr = expr
-
-    def tree(self):
-        return {"func" : {"input" : [arg.tree() for arg in self.args], "output" : self.expr.tree()}}
-
-    def __str__(self):
-        return "{}({}) = {}".format(self.name, ", ".join([str(arg) for arg in self.args]), str(self.expr))
-
-
 
 nextToken = None
 
@@ -181,8 +36,7 @@ def scanNextToken():
     nextToken = tokens[0]
     tokens = tokens[1:]
 
-
-def parseP():
+def parseProgram():
     stmts = []
     while nextToken.name != "EOF":
         a = parseS()
@@ -195,8 +49,6 @@ def parseP():
     return stmts
 
 def parseS():
-    global nextToken, tokens
-    temp = (nextToken, tokens)
 
     if nextToken.name == "IDENT":
         name = nextToken.text
@@ -225,89 +77,66 @@ def parseS():
                 else:
                     break
 
-    nextToken = temp[0]
-    tokens = temp[1]
-    return parseE()
-
 def parseE():
     a = parseT()
+    exprs = [a]
+    while nextToken.name == "OP":
+        if nextToken.text == "+":
+            scanNextToken()
+            a = parseT()
 
-    while True:
-        if nextToken.name == "OP":
-            if nextToken.text == "+":
-                scanNextToken()
-                b = parseT()
-                a = Add(a, b)
+        elif nextToken.text == "-":
+            scanNextToken()
+            a = Mult([Num(-1.0), parseT()])
 
-            elif nextToken.text == "-":
-                scanNextToken()
-                b = parseT()
-                a = Sub(a, b)
-
-            else:
-                break
         else:
             break
 
-    return a
+        exprs.append(a)
+    if len(exprs) > 1:
+        return Add(exprs)
+    elif len(exprs) == 1:
+        return exprs[0]
+    return None
 
 def parseT():
     a = parseF()
+    numer = [a]
+    denum = []
+    while nextToken.name == "OP":
+        if nextToken.text == "*":
+            scanNextToken()
+            a = parseF()
+            numer.append(a)
 
-    while True:
-        if nextToken.name == "OP":
-            if nextToken.text == "*":
-                scanNextToken()
-                b = parseF()
-                a = Mult(a, b)
+        elif nextToken.text == "/":
+            scanNextToken()
+            a = parseF()
+            denum.append(a)
 
-            elif nextToken.text == "/":
-                scanNextToken()
-                b = parseF()
-                a = Div(a, b)
-
-            else:
-                break
         else:
             break
-    return a
+
+    if len(denum) == 0:
+        return Mult(numer) if len(numer) > 1 else numer[0]
+
+    return Div(Mult(numer) if len(numer) > 1 else numer[0], Mult(denum) if len(denum) > 1 else denum[0])
 
 def parseF():
+    a = parseP()
+    while nextToken.text == "^":
+        scanNextToken()
+        b = parseP()
+        a = Power(a, b)
+
+    return a
+
+
+def parseP():
     if nextToken.name == "NUM":
         a = Num(float(nextToken.text))
         scanNextToken()
-        if nextToken.name == "IDENT":
-            name = nextToken.text
-            scanNextToken()
-            if nextToken.text == "(":
-                scanNextToken()
-                args = [parseE()]
-                while nextToken.name == "COMMA":
-                    scanNextToken()
-                    args.append(parseE())
-
-                if nextToken.text == ")":
-                    scanNextToken()
-                    return Mult(a, Call(name, args))
-        else:
-            return a
-
-    elif nextToken.text == "-":
-        scanNextToken()
-        if nextToken.name == "IDENT":
-            name = nextToken.text
-            scanNextToken()
-            if nextToken.text == "(":
-                scanNextToken()
-                args = [parseE()]
-                while nextToken.name == "COMMA":
-                    scanNextToken()
-                    args.append(parseE())
-
-                if nextToken.text == ")":
-                    scanNextToken()
-                    return Mult(Num(-1), Call(name, args))
-
+        return a
     elif nextToken.text == "(" :
         scanNextToken()
         a = parseE()
@@ -320,17 +149,6 @@ def parseF():
             if nextToken.text == ")":
                 scanNextToken()
                 return Pair(a, b)
-
-    elif nextToken.text == "[":
-        scanNextToken()
-        vals = [parseE()]
-        while nextToken.name == "COMMA":
-            scanNextToken()
-            vals.append(parseE())
-        if nextToken.text == "]":
-            scanNextToken()
-            return Array(vals)
-
     elif nextToken.name == "IDENT":
         name = nextToken.text
         scanNextToken()
@@ -348,10 +166,34 @@ def parseF():
         else:
             return Var(name)
 
-import json
+#
+#     elif nextToken.text == "(" :
+#         scanNextToken()
+#         a = parseE()
+#         if nextToken.text == ")":
+#             scanNextToken()
+#             return a
+#         elif nextToken.name == "COMMA":
+#             scanNextToken()
+#             b = parseE()
+#             if nextToken.text == ")":
+#                 scanNextToken()
+#                 return Pair(a, b)
+#
+#     elif nextToken.text == "[":
+#         scanNextToken()
+#         vals = [parseE()]
+#         while nextToken.name == "COMMA":
+#             scanNextToken()
+#             vals.append(parseE())
+#         if nextToken.text == "]":
+#             scanNextToken()
+#             return Array(vals)
 
+import json
 scanNextToken()
-stmts = parseP()
-for s in stmts:
-    print(s)
-    print(json.dumps(s.tree(), sort_keys=False, indent=4))
+prgrm = parseProgram()
+for stmt in prgrm:
+    print(stmt)
+    print(json.dumps(stmt.tree(), sort_keys=False, indent=4))
+    print(stmt.simplify())
