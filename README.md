@@ -18,7 +18,3 @@ llama is a programming language centered around playing with math without the hu
 8) Power -> num | id | (Expression)
 9) Power -> id(Expression {, Expression}*)
 10) Power -> '{' Expression {= | != | => | >= | <= | =<]} Expression '?' { Expression : Expression '}' | Expression '}' | '}' }
-11) Power -> (Expression, Expression)
-
-Latter(this just complicates it because I only want specifc expressiojn to be used for a list):
-11) Power -> [Expression {, Expression}*]
