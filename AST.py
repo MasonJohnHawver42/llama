@@ -1,9 +1,14 @@
+
+
 class Add:
     def __init__(self, exprs):
         self.exprs = exprs
 
     def tree(self):
         return {"add" : [expr.tree() for expr in self.exprs]}
+    
+    def compute(self):
+        pass
 
     def simplify(self):
         num = Num(0)
@@ -22,21 +27,8 @@ class Add:
             return Add(other)
         return Add([num] + other)
 
-
-
     def __str__(self):
         return "({})".format(" + ".join([str(expr) for expr in self.exprs]))
-
-#mabey do the research
-# class Negate:
-#     def __init__(self, expr):
-#         self.expr = expr
-#
-#     def tree(self):
-#         return {"-" : self.expr.tree()}
-#
-#     def __str__(self):
-#         return "-{}".format(str(self.expr))
 
 class Mult:
     def __init__(self, exprs):

@@ -25,19 +25,23 @@ z = 1 / 6 + 3 * pi / 5 * 7 / 4/ 4;
 tokens = lg.lex(code) + [Token("EOF", "")]
 asts = pr.parse(tokens)
 
+class Evaluator:
+    def __init__(self):
+        self.vars = {}
+        
+    def evaluate(self, stmt):
+        if type(stmt) is Assighnment:
+            pass
+  
+  
 import json
+
+print(" ".join([t.name for t in tokens]) )
+
+ev = Evaluator()
 
 for ast in asts:
     print(ast)
+    ast = ast.simplify()
+    print(ast)
     print(json.dumps(ast.tree(), sort_keys=False, indent=4))
-#print(" ".join([t.name for t in tokens]) )
-
-# class Evaluator:
-#     def __init__(self):
-#         self.vars = {}
-#         
-#     def evaluate(self, stmt):
-#         
-#         
-#         if 
-    
