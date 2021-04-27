@@ -8,193 +8,140 @@ from AST import *
 # P -> P { [^] P }*
 # P -> num | [-]IDENT | (E) | IDENT(E {, E}*)
 
-lg = Lexer()
-lg.add("EQUALS", "=")
-lg.add("OP", "[-+*/^]")
-lg.add("NUM", "[-]?[0-9]*[.]?[0-9]+")
-lg.add("BRACKET", "[()\[\]]")
-lg.add("IDENT", "[a-zA-Z_][a-zA-Z_0-9]*")
-lg.add("EOL", ";")
-lg.add("COMMA", ",")
 
+class Parser:
+    def __init__(self):
+        self.tokens = []
+        self.nextToken = None
+    
+    def parse(self, tokens):
+        self.tokens = tokens
+        self.scanNextToken()
+        return self.parseProgram()
 
-# f(x) = (x + 5, (x - 1) * 6 + 1)
-# point = f(sin(-10))
-# a = pi/4
+    def scanNextToken(self):
+        self.nextToken = self.tokens[0]
+        self.tokens = self.tokens[1:]
 
-code = """
-a = a * (b / c) * (d / e) * f - 1;
-z=1;
-"""
+    def parseProgram(self):    
+        stmts = []
+        while self.nextToken.name != "EOF":
+            a = self.parseS()
+            stmts.append(a)
+            if (self.nextToken.name != "EOL"):
+                break
+            else:
+                self.scanNextToken()
 
-tokens = lg.lex(code) + [Token("EOF", "")]
-print(" ".join([t.name for t in tokens]) )
+        return stmts
 
-nextToken = None
+    def parseS(self):
 
-def scanNextToken():
-    global tokens, nextToken
-    nextToken = tokens[0]
-    tokens = tokens[1:]
+        if self.nextToken.name == "IDENT":
+            name = self.nextToken.text
+            self.scanNextToken()
+            if self.nextToken.name == "EQUALS":
+                self.scanNextToken()
+                a = Var(name)
+                b = self.parseE()
+                return Assighnment(a, b)
 
-def parseProgram():
-    stmts = []
-    while nextToken.name != "EOF":
-        a = parseS()
-        stmts.append(a)
-        if (nextToken.name != "EOL"):
-            break
-        else:
-            scanNextToken()
+            elif self.nextToken.text == "(":
+                self.scanNextToken()
+                args = []
+                while self.nextToken.name == "IDENT":
+                    args.append(Var(self.nextToken.text))
+                    self.scanNextToken()
+                    if self.nextToken.name == "COMMA":
+                        continue
+                    elif self.nextToken.text == ")":
+                        self.scanNextToken()
+                        if self.nextToken.name == "EQUALS":
+                            self.scanNextToken()
+                            expr = self.parseE()
+                            return Func(name, args, expr)
 
-    return stmts
+                    else:
+                        break
 
-def parseS():
+    def parseE(self):
+        a = self.parseT()
+        exprs = [a]
+        while self.nextToken.name == "OP":
+            if self.nextToken.text == "+":
+                self.scanNextToken()
+                a = self.parseT()
 
-    if nextToken.name == "IDENT":
-        name = nextToken.text
-        scanNextToken()
-        if nextToken.name == "EQUALS":
-            scanNextToken()
-            a = Var(name)
-            b = parseE()
-            return Assighnment(a, b)
+            elif self.nextToken.text == "-":
+                self.scanNextToken()
+                a = Mult([Num(-1.0), self.parseT()])
 
-        elif nextToken.text == "(":
-            scanNextToken()
-            args = []
-            while nextToken.name == "IDENT":
-                args.append(Var(nextToken.text))
-                scanNextToken()
-                if nextToken.name == "COMMA":
-                    continue
-                elif nextToken.text == ")":
-                    scanNextToken()
-                    if nextToken.name == "EQUALS":
-                        scanNextToken()
-                        expr = parseE()
-                        return Func(name, args, expr)
+            else:
+                break
 
-                else:
-                    break
+            exprs.append(a)
+        if len(exprs) > 1:
+            return Add(exprs)
+        elif len(exprs) == 1:
+            return exprs[0]
+        return None
 
-def parseE():
-    a = parseT()
-    exprs = [a]
-    while nextToken.name == "OP":
-        if nextToken.text == "+":
-            scanNextToken()
-            a = parseT()
+    def parseT(self):
+        a = self.parseF()
+        numer = [a]
+        denum = []
+        while self.nextToken.name == "OP":
+            if self.nextToken.text == "*":
+                self.scanNextToken()
+                a = self.parseF()
+                numer.append(a)
 
-        elif nextToken.text == "-":
-            scanNextToken()
-            a = Mult([Num(-1.0), parseT()])
+            elif self.nextToken.text == "/":
+                self.scanNextToken()
+                a = self.parseF()
+                denum.append(a)
 
-        else:
-            break
+            else:
+                break
 
-        exprs.append(a)
-    if len(exprs) > 1:
-        return Add(exprs)
-    elif len(exprs) == 1:
-        return exprs[0]
-    return None
+        if len(denum) == 0:
+            return Mult(numer) if len(numer) > 1 else numer[0]
 
-def parseT():
-    a = parseF()
-    numer = [a]
-    denum = []
-    while nextToken.name == "OP":
-        if nextToken.text == "*":
-            scanNextToken()
-            a = parseF()
-            numer.append(a)
+        return Div(Mult(numer) if len(numer) > 1 else numer[0], Mult(denum) if len(denum) > 1 else denum[0])
 
-        elif nextToken.text == "/":
-            scanNextToken()
-            a = parseF()
-            denum.append(a)
+    def parseF(self):
+        a = self.parseP()
+        while self.nextToken.text == "^":
+            self.scanNextToken()
+            b = self.parseP()
+            a = Power(a, b)
 
-        else:
-            break
-
-    if len(denum) == 0:
-        return Mult(numer) if len(numer) > 1 else numer[0]
-
-    return Div(Mult(numer) if len(numer) > 1 else numer[0], Mult(denum) if len(denum) > 1 else denum[0])
-
-def parseF():
-    a = parseP()
-    while nextToken.text == "^":
-        scanNextToken()
-        b = parseP()
-        a = Power(a, b)
-
-    return a
-
-
-def parseP():
-    if nextToken.name == "NUM":
-        a = Num(float(nextToken.text))
-        scanNextToken()
         return a
-    elif nextToken.text == "(" :
-        scanNextToken()
-        a = parseE()
-        if nextToken.text == ")":
-            scanNextToken()
+
+    def parseP(self):
+        if self.nextToken.name == "NUM":
+            a = Num(float(self.nextToken.text))
+            self.scanNextToken()
             return a
-        elif nextToken.name == "COMMA":
-            scanNextToken()
-            b = parseE()
-            if nextToken.text == ")":
-                scanNextToken()
-                return Pair(a, b)
-    elif nextToken.name == "IDENT":
-        name = nextToken.text
-        scanNextToken()
-        if nextToken.text == "(":
-            scanNextToken()
-            args = [parseE()]
-            while nextToken.name == "COMMA":
-                scanNextToken()
-                args.append(parseE())
+        elif self.nextToken.text == "(" :
+            self.scanNextToken()
+            a = self.parseE()
+            if self.nextToken.text == ")":
+                self.scanNextToken()
+                return a
+        elif self.nextToken.name == "IDENT":
+            name = self.nextToken.text
+            self.scanNextToken()
+            if self.nextToken.text == "(":
+                self.scanNextToken()
+                args = [self.parseE()]
+                while self.nextToken.name == "COMMA":
+                    self.scanNextToken()
+                    args.append(self.parseE())
 
-            if nextToken.text == ")":
-                scanNextToken()
-                return Call(name, args)
+                if self.nextToken.text == ")":
+                    self.scanNextToken()
+                    return Call(name, args)
 
-        else:
-            return Var(name)
-
-#
-#     elif nextToken.text == "(" :
-#         scanNextToken()
-#         a = parseE()
-#         if nextToken.text == ")":
-#             scanNextToken()
-#             return a
-#         elif nextToken.name == "COMMA":
-#             scanNextToken()
-#             b = parseE()
-#             if nextToken.text == ")":
-#                 scanNextToken()
-#                 return Pair(a, b)
-#
-#     elif nextToken.text == "[":
-#         scanNextToken()
-#         vals = [parseE()]
-#         while nextToken.name == "COMMA":
-#             scanNextToken()
-#             vals.append(parseE())
-#         if nextToken.text == "]":
-#             scanNextToken()
-#             return Array(vals)
-
-import json
-scanNextToken()
-prgrm = parseProgram()
-for stmt in prgrm:
-    print(stmt)
-    print(json.dumps(stmt.tree(), sort_keys=False, indent=4))
-    print(stmt.simplify())
+            else:
+                return Var(name)
